@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balloon Shooter | Pop 'Em All!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Menu Screen -->
+        <div id="menu-screen" class="overlay">
+            <div class="title-container">
+                <h1 class="game-title">🎈 BALLOON SHOOTER 🎈</h1>
+                <p class="subtitle">POP 'EM ALL!</p>
+            </div>
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <div class="controls-grid">
+                    <div class="control">
+                        <span class="key">← →</span>
+                        <span class="action">Move Cannon</span>
+                    </div>
+                    <div class="control">
+                        <span class="key">SPACE</span>
+                        <span class="action">Shoot</span>
+                    </div>
+                    <div class="control">
+                        <span class="key">ESC</span>
+                        <span class="action">Pause</span>
+                    </div>
+                </div>
+            </div>
+            <button id="start-btn" class="game-btn">START GAME</button>
+        </div>
+
+        <!-- Pause Screen -->
+        <div id="pause-screen" class="overlay hidden">
+            <h2 class="pause-title">⏸ PAUSED</h2>
+            <div class="pause-buttons">
+                <button id="resume-btn" class="game-btn">RESUME</button>
+                <button id="menu-btn" class="game-btn secondary">MAIN MENU</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameover-screen" class="overlay hidden">
+            <h2 class="gameover-title">GAME OVER!</h2>
+            <div class="final-stats">
+                <div class="stat">
+                    <span class="stat-label">FINAL SCORE</span>
+                    <span id="final-score" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">LEVEL REACHED</span>
+                    <span id="final-level" class="stat-value">1</span>
+                </div>
+            </div>
+            <div class="gameover-buttons">
+                <button id="restart-btn" class="game-btn">PLAY AGAIN</button>
+                <button id="menu-btn-2" class="game-btn secondary">MAIN MENU</button>
+            </div>
+        </div>
+
+        <!-- HUD -->
+        <div id="hud" class="hidden">
+            <div class="hud-left">
+                <div class="stat-display">
+                    <span class="hud-label">SCORE</span>
+                    <span id="score" class="hud-value">0</span>
+                </div>
+            </div>
+            <div class="hud-center">
+                <div class="stat-display">
+                    <span class="hud-label">LEVEL</span>
+                    <span id="level" class="hud-value">1</span>
+                </div>
+                <div class="stat-display">
+                    <span class="hud-label">COMBO</span>
+                    <span id="combo" class="hud-value">x1</span>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="stat-display">
+                    <span class="hud-label">LIVES</span>
+                    <div id="lives-container" class="lives-container">
+                        <span class="life">❤️</span>
+                        <span class="life">❤️</span>
+                        <span class="life">❤️</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Level Up Notification -->
+        <div id="levelup-notification" class="levelup-notification hidden">
+            <span class="levelup-text">LEVEL UP!</span>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
