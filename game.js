@@ -13,6 +13,67 @@ const BALLOON_TYPES = {
 };
 
 // ====================================
+// IMPACT EFFECT CLASS
+// ====================================
+class ImpactEffect {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = 5;
+        this.maxRadius = 25;
+        this.lifetime = 0.3;
+        this.maxLifetime = 0.3;
+        this.rings = [
+            { radius: 0, alpha: 1 },
+            { radius: 0, alpha: 0.7 },
+            { radius: 0, alpha: 0.4 }
+        ];
+    }
+
+    update(delta) {
+        this.lifetime -= delta;
+        const progress = 1 - (this.lifetime / this.maxLifetime);
+
+        this.rings.forEach((ring, index) => {
+            ring.radius = progress * this.maxRadius * (1 + index * 0.3);
+            ring.alpha = (1 - progress) * (1 - index * 0.3);
+        });
+    }
+
+    draw(ctx) {
+        ctx.save();
+
+        this.rings.forEach(ring => {
+            ctx.globalAlpha = ring.alpha;
+            ctx.strokeStyle = '#FFE66D';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, ring.radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner glow
+            ctx.strokeStyle = '#FFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+
+        // Flash at center
+        const centerAlpha = (this.lifetime / this.maxLifetime) * 0.8;
+        ctx.globalAlpha = centerAlpha;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    isDead() {
+        return this.lifetime <= 0;
+    }
+}
+
+// ====================================
 // PARTICLE CLASS
 // ====================================
 class Particle {
@@ -53,7 +114,7 @@ class Particle {
 }
 
 // ====================================
-// BULLET CLASS
+// BULLET CLASS (CANNONBALL)
 // ====================================
 class Bullet {
     constructor(x, y, angle, speed = 600) {
@@ -61,24 +122,51 @@ class Bullet {
         this.y = y;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
-        this.radius = 4;
+        this.radius = 8;
         this.lifetime = 2;
+        this.rotation = 0;
     }
 
     update(delta) {
         this.x += this.vx * delta;
         this.y += this.vy * delta;
         this.lifetime -= delta;
+        this.rotation += delta * 10;
     }
 
     draw(ctx) {
         ctx.save();
-        ctx.fillStyle = '#FFE66D';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#FFE66D';
+
+        // Draw cannonball shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(this.x + 2, this.y + 2, this.radius * 0.8, this.radius * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw cannonball with 3D effect
+        const gradient = ctx.createRadialGradient(
+            this.x - this.radius * 0.3,
+            this.y - this.radius * 0.3,
+            this.radius * 0.2,
+            this.x,
+            this.y,
+            this.radius
+        );
+        gradient.addColorStop(0, '#555');
+        gradient.addColorStop(0.6, '#222');
+        gradient.addColorStop(1, '#000');
+
+        ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
+
+        // Add highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.beginPath();
+        ctx.arc(this.x - this.radius * 0.3, this.y - this.radius * 0.3, this.radius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
         ctx.restore();
     }
 
@@ -242,10 +330,11 @@ class Cannon {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.width = 60;
+        this.width = 70;
         this.height = 40;
         this.angle = -Math.PI / 2;
-        this.barrelLength = 50;
+        this.barrelLength = 60;
+        this.barrelWidth = 24;
         this.moveSpeed = 300;
     }
 
@@ -258,27 +347,86 @@ class Cannon {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        ctx.fillStyle = '#555';
-        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+        // Draw base platform
+        ctx.fillStyle = '#4A4A4A';
+        ctx.fillRect(-this.width / 2, -5, this.width, 10);
+        ctx.strokeStyle = '#2A2A2A';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-this.width / 2, -5, this.width, 10);
 
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+        // Draw cannon mount (rounded base)
+        const mountGradient = ctx.createRadialGradient(0, -5, 5, 0, -5, 25);
+        mountGradient.addColorStop(0, '#666');
+        mountGradient.addColorStop(1, '#333');
+        ctx.fillStyle = mountGradient;
+        ctx.beginPath();
+        ctx.arc(0, -5, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
+        // Draw wheel details
+        for (let i = 0; i < 6; i++) {
+            const angle = (i * Math.PI * 2) / 6;
+            const wx = Math.cos(angle) * 18;
+            const wy = -5 + Math.sin(angle) * 18;
+            ctx.fillStyle = '#555';
+            ctx.beginPath();
+            ctx.arc(wx, wy, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Draw barrel (pointing upward)
         ctx.save();
         ctx.rotate(this.angle);
-        ctx.fillStyle = '#666';
-        ctx.fillRect(-10, -this.barrelLength, 20, this.barrelLength);
+
+        // Barrel body with metallic gradient
+        const barrelGradient = ctx.createLinearGradient(
+            -this.barrelWidth / 2, 0,
+            this.barrelWidth / 2, 0
+        );
+        barrelGradient.addColorStop(0, '#3A3A3A');
+        barrelGradient.addColorStop(0.3, '#555');
+        barrelGradient.addColorStop(0.5, '#666');
+        barrelGradient.addColorStop(0.7, '#555');
+        barrelGradient.addColorStop(1, '#3A3A3A');
+
+        ctx.fillStyle = barrelGradient;
+        ctx.beginPath();
+        ctx.roundRect(-this.barrelWidth / 2, -this.barrelLength, this.barrelWidth, this.barrelLength, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Barrel rings for detail
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 3;
+        for (let i = 1; i <= 3; i++) {
+            const ringY = -this.barrelLength + (i * this.barrelLength / 4);
+            ctx.beginPath();
+            ctx.moveTo(-this.barrelWidth / 2, ringY);
+            ctx.lineTo(this.barrelWidth / 2, ringY);
+            ctx.stroke();
+        }
+
+        // Barrel opening (dark circle at the end)
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(0, -this.barrelLength, this.barrelWidth / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner barrel highlight
         ctx.strokeStyle = '#444';
         ctx.lineWidth = 2;
-        ctx.strokeRect(-10, -this.barrelLength, 20, this.barrelLength);
+        ctx.stroke();
 
-        ctx.fillStyle = '#888';
-        ctx.beginPath();
-        ctx.arc(0, -this.barrelLength, 12, 0, Math.PI * 2);
-        ctx.fill();
+        // Muzzle rim
         ctx.strokeStyle = '#666';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, -this.barrelLength, this.barrelWidth / 2, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.restore();
@@ -367,6 +515,7 @@ class BalloonGame {
         this.balloons = [];
         this.bullets = [];
         this.particles = [];
+        this.impacts = [];
 
         this.keys = {};
         this.lastShot = 0;
@@ -482,6 +631,7 @@ class BalloonGame {
         this.balloons = [];
         this.bullets = [];
         this.particles = [];
+        this.impacts = [];
         this.spawnTimer = 0;
         this.spawnInterval = 1500;
         this.updateDifficulty();
@@ -512,6 +662,7 @@ class BalloonGame {
         this.balloons.forEach(b => b.update(delta));
         this.bullets.forEach(b => b.update(delta));
         this.particles.forEach(p => p.update(delta));
+        this.impacts.forEach(i => i.update(delta));
 
         this.checkCollisions();
         this.cleanup();
@@ -552,15 +703,31 @@ class BalloonGame {
     }
 
     createMuzzleFlash(x, y) {
-        for (let i = 0; i < 5; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 50 + Math.random() * 50;
+        // Smoke particles
+        for (let i = 0; i < 8; i++) {
+            const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.6;
+            const speed = 80 + Math.random() * 60;
+            const gray = Math.floor(100 + Math.random() * 100);
             this.particles.push(new Particle(
                 x, y,
                 Math.cos(angle) * speed,
-                Math.sin(angle) * speed - 100,
-                '#FFE66D',
-                2
+                Math.sin(angle) * speed,
+                `rgb(${gray}, ${gray}, ${gray})`,
+                4 + Math.random() * 3
+            ));
+        }
+
+        // Fire/flash particles
+        for (let i = 0; i < 6; i++) {
+            const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+            const speed = 100 + Math.random() * 80;
+            const colors = ['#FF6B00', '#FFD700', '#FFA500', '#FFFF00'];
+            this.particles.push(new Particle(
+                x, y,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed,
+                colors[Math.floor(Math.random() * colors.length)],
+                3 + Math.random() * 2
             ));
         }
     }
@@ -636,6 +803,9 @@ class BalloonGame {
     handleBalloonHit(balloon, index) {
         balloon.health--;
 
+        // Create impact effect on hit
+        this.impacts.push(new ImpactEffect(balloon.x, balloon.y));
+
         if (balloon.health <= 0) {
             this.createPopEffect(balloon.x, balloon.y, balloon.color, balloon.type);
             this.score += balloon.score * this.combo;
@@ -697,6 +867,7 @@ class BalloonGame {
         this.bullets = this.bullets.filter(b => !b.isDead() && this.isOnScreen(b));
         this.balloons = this.balloons.filter(b => b.y < this.canvas.height + 100);
         this.particles = this.particles.filter(p => !p.isDead());
+        this.impacts = this.impacts.filter(i => !i.isDead());
     }
 
     isOnScreen(obj) {
@@ -758,6 +929,7 @@ class BalloonGame {
         if (this.cannon) this.cannon.draw(this.ctx);
         this.bullets.forEach(b => b.draw(this.ctx));
         this.balloons.forEach(b => b.draw(this.ctx));
+        this.impacts.forEach(i => i.draw(this.ctx));
         this.particles.forEach(p => p.draw(this.ctx));
     }
 
