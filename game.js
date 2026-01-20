@@ -494,6 +494,56 @@ class SoundManager {
 }
 
 // ====================================
+// LEADERBOARD MANAGER CLASS
+// ====================================
+class LeaderboardManager {
+    constructor() {
+        this.storageKey = 'balloonShooterLeaderboard';
+        this.maxEntries = 10;
+    }
+
+    getScores() {
+        const stored = localStorage.getItem(this.storageKey);
+        return stored ? JSON.parse(stored) : [];
+    }
+
+    addScore(name, score, level) {
+        const scores = this.getScores();
+        const timestamp = new Date().toISOString();
+
+        scores.push({
+            name: name.trim() || 'PLAYER',
+            score: score,
+            level: level,
+            timestamp: timestamp
+        });
+
+        scores.sort((a, b) => b.score - a.score);
+
+        const trimmed = scores.slice(0, this.maxEntries);
+        localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
+
+        return trimmed.findIndex(s => s.score === score && s.timestamp === timestamp) + 1;
+    }
+
+    isHighScore(score) {
+        const scores = this.getScores();
+        if (scores.length < this.maxEntries) return true;
+        return score > scores[scores.length - 1].score;
+    }
+
+    getRank(score) {
+        const scores = this.getScores();
+        let rank = 1;
+        for (const entry of scores) {
+            if (score > entry.score) break;
+            rank++;
+        }
+        return rank;
+    }
+}
+
+// ====================================
 // MAIN GAME CLASS
 // ====================================
 class BalloonGame {
@@ -529,6 +579,7 @@ class BalloonGame {
         this.animationId = null;
 
         this.soundManager = new SoundManager();
+        this.leaderboard = new LeaderboardManager();
 
         this.init();
     }
@@ -567,6 +618,16 @@ class BalloonGame {
         document.getElementById('menu-btn').addEventListener('click', () => this.showMenu());
         document.getElementById('restart-btn').addEventListener('click', () => this.startGame());
         document.getElementById('menu-btn-2').addEventListener('click', () => this.showMenu());
+        document.getElementById('view-leaderboard-btn').addEventListener('click', () => this.showLeaderboard());
+        document.getElementById('submit-score-btn').addEventListener('click', () => this.submitHighScore());
+        document.getElementById('back-to-menu-btn').addEventListener('click', () => this.showMenu());
+
+        // Allow Enter key to submit name
+        document.getElementById('player-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.submitHighScore();
+            }
+        });
     }
 
     startGame() {
@@ -592,30 +653,55 @@ class BalloonGame {
     }
 
     gameOver() {
-        document.getElementById('final-score').textContent = this.score;
-        document.getElementById('final-level').textContent = this.level;
-        this.transitionTo('gameover');
+        // Check if this is a high score
+        if (this.leaderboard.isHighScore(this.score)) {
+            document.getElementById('entry-score').textContent = this.score;
+            const rank = this.leaderboard.getRank(this.score);
+            document.getElementById('entry-rank').textContent = `#${rank}`;
+            document.getElementById('player-name').value = '';
+            this.transitionTo('highscore-entry');
+
+            // Focus on name input
+            setTimeout(() => {
+                document.getElementById('player-name').focus();
+            }, 100);
+        } else {
+            document.getElementById('final-score').textContent = this.score;
+            document.getElementById('final-level').textContent = this.level;
+            this.transitionTo('gameover');
+        }
     }
 
     transitionTo(newState) {
+        // Hide current state
         if (this.gameState === 'menu') {
             document.getElementById('menu-screen').classList.add('hidden');
         } else if (this.gameState === 'paused') {
             document.getElementById('pause-screen').classList.add('hidden');
         } else if (this.gameState === 'gameover') {
             document.getElementById('gameover-screen').classList.add('hidden');
+        } else if (this.gameState === 'highscore-entry') {
+            document.getElementById('highscore-entry-screen').classList.add('hidden');
+        } else if (this.gameState === 'leaderboard') {
+            document.getElementById('leaderboard-screen').classList.add('hidden');
         } else if (this.gameState === 'playing') {
             document.getElementById('hud').classList.add('hidden');
         }
 
         this.gameState = newState;
 
+        // Show new state
         if (newState === 'menu') {
             document.getElementById('menu-screen').classList.remove('hidden');
         } else if (newState === 'paused') {
             document.getElementById('pause-screen').classList.remove('hidden');
         } else if (newState === 'gameover') {
             document.getElementById('gameover-screen').classList.remove('hidden');
+        } else if (newState === 'highscore-entry') {
+            document.getElementById('highscore-entry-screen').classList.remove('hidden');
+        } else if (newState === 'leaderboard') {
+            document.getElementById('leaderboard-screen').classList.remove('hidden');
+            this.renderLeaderboard();
         } else if (newState === 'playing') {
             document.getElementById('hud').classList.remove('hidden');
         }
@@ -931,6 +1017,72 @@ class BalloonGame {
         this.balloons.forEach(b => b.draw(this.ctx));
         this.impacts.forEach(i => i.draw(this.ctx));
         this.particles.forEach(p => p.draw(this.ctx));
+    }
+
+    submitHighScore() {
+        const nameInput = document.getElementById('player-name');
+        const playerName = nameInput.value.trim() || 'PLAYER';
+
+        this.leaderboard.addScore(playerName, this.score, this.level);
+
+        document.getElementById('final-score').textContent = this.score;
+        document.getElementById('final-level').textContent = this.level;
+        this.transitionTo('gameover');
+    }
+
+    showLeaderboard() {
+        this.transitionTo('leaderboard');
+    }
+
+    renderLeaderboard() {
+        const listContainer = document.getElementById('leaderboard-list');
+        const scores = this.leaderboard.getScores();
+
+        if (scores.length === 0) {
+            listContainer.innerHTML = '<div class="leaderboard-empty">No high scores yet!<br>Be the first to set a record!</div>';
+            return;
+        }
+
+        listContainer.innerHTML = '';
+
+        scores.forEach((entry, index) => {
+            const row = document.createElement('div');
+            row.className = 'leaderboard-entry';
+
+            const rank = document.createElement('span');
+            rank.className = 'lb-rank';
+            if (index === 0) {
+                rank.className += ' medal';
+                rank.textContent = '🥇';
+            } else if (index === 1) {
+                rank.className += ' medal';
+                rank.textContent = '🥈';
+            } else if (index === 2) {
+                rank.className += ' medal';
+                rank.textContent = '🥉';
+            } else {
+                rank.textContent = `#${index + 1}`;
+            }
+
+            const name = document.createElement('span');
+            name.className = 'lb-name';
+            name.textContent = entry.name;
+
+            const score = document.createElement('span');
+            score.className = 'lb-score';
+            score.textContent = entry.score.toLocaleString();
+
+            const level = document.createElement('span');
+            level.className = 'lb-level';
+            level.textContent = entry.level;
+
+            row.appendChild(rank);
+            row.appendChild(name);
+            row.appendChild(score);
+            row.appendChild(level);
+
+            listContainer.appendChild(row);
+        });
     }
 
     drawBackground() {
