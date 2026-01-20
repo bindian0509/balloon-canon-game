@@ -2,6 +2,22 @@
 // BALLOON SHOOTER GAME
 // ====================================
 
+// Polyfill for roundRect (not supported in all browsers)
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+    };
+}
+
 // Constants
 const BALLOON_TYPES = {
     red: { color: '#FF4444', speed: 25, health: 1, score: 100 },
@@ -586,8 +602,10 @@ class BalloonGame {
 
     resizeCanvas() {
         const container = this.canvas.parentElement;
-        this.canvas.width = container.clientWidth;
-        this.canvas.height = container.clientHeight;
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 600;
+        this.canvas.width = width;
+        this.canvas.height = height;
     }
 
     init() {
@@ -1101,5 +1119,21 @@ class BalloonGame {
 
 // Initialize game when page loads
 window.addEventListener('load', () => {
-    new BalloonGame();
+    try {
+        new BalloonGame();
+    } catch (error) {
+        console.error('Failed to initialize game:', error);
+        document.body.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #1A1A2E; color: white; font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+                <div>
+                    <h1 style="color: #FF6B6B; margin-bottom: 20px;">🎈 Game Loading Error</h1>
+                    <p style="margin-bottom: 10px;">Failed to initialize the game.</p>
+                    <p style="color: #FFE66D; font-size: 0.9em;">Error: ${error.message}</p>
+                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 30px; background: #FF6B6B; border: none; color: white; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+                        Reload Page
+                    </button>
+                </div>
+            </div>
+        `;
+    }
 });
