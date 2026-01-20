@@ -346,106 +346,194 @@ class Cannon {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.width = 70;
-        this.height = 40;
-        this.angle = -Math.PI / 2;
-        this.barrelLength = 60;
-        this.barrelWidth = 24;
+        this.baseWidth = 50;
+        this.baseHeight = 15;
+        this.angle = -Math.PI / 2; // Points straight up
+        this.barrelLength = 35;  // Much shorter barrel
+        this.barrelWidth = 10;   // Thinner barrel
         this.moveSpeed = 300;
     }
 
     move(direction, delta, canvasWidth) {
         this.x += direction * this.moveSpeed * delta;
-        this.x = Math.max(this.width / 2, Math.min(canvasWidth - this.width / 2, this.x));
+        this.x = Math.max(this.baseWidth / 2, Math.min(canvasWidth - this.baseWidth / 2, this.x));
     }
 
     draw(ctx) {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        // Draw base platform
-        ctx.fillStyle = '#4A4A4A';
-        ctx.fillRect(-this.width / 2, -5, this.width, 10);
-        ctx.strokeStyle = '#2A2A2A';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-this.width / 2, -5, this.width, 10);
-
-        // Draw cannon mount (rounded base)
-        const mountGradient = ctx.createRadialGradient(0, -5, 5, 0, -5, 25);
-        mountGradient.addColorStop(0, '#666');
-        mountGradient.addColorStop(1, '#333');
-        ctx.fillStyle = mountGradient;
+        // Draw shadow beneath
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.beginPath();
-        ctx.arc(0, -5, 25, 0, Math.PI * 2);
+        ctx.ellipse(0, this.baseHeight + 8, this.baseWidth / 2, 5, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#222';
-        ctx.lineWidth = 2;
-        ctx.stroke();
 
-        // Draw wheel details
-        for (let i = 0; i < 6; i++) {
-            const angle = (i * Math.PI * 2) / 6;
-            const wx = Math.cos(angle) * 18;
-            const wy = -5 + Math.sin(angle) * 18;
-            ctx.fillStyle = '#555';
+        // Draw wheels
+        const wheelRadius = 10;
+        const wheelY = this.baseHeight + 2;
+
+        for (let wheelX of [-this.baseWidth / 3, this.baseWidth / 3]) {
+            // Wheel shadow
+            ctx.fillStyle = '#1A1A1A';
             ctx.beginPath();
-            ctx.arc(wx, wy, 3, 0, Math.PI * 2);
+            ctx.arc(wheelX, wheelY, wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Wheel
+            const wheelGradient = ctx.createRadialGradient(
+                wheelX - 3, wheelY - 3, 2,
+                wheelX, wheelY, wheelRadius
+            );
+            wheelGradient.addColorStop(0, '#555');
+            wheelGradient.addColorStop(1, '#222');
+            ctx.fillStyle = wheelGradient;
+            ctx.beginPath();
+            ctx.arc(wheelX, wheelY, wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Wheel rim
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Spokes
+            for (let i = 0; i < 8; i++) {
+                const angle = (i * Math.PI * 2) / 8;
+                ctx.strokeStyle = '#444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(wheelX, wheelY);
+                ctx.lineTo(
+                    wheelX + Math.cos(angle) * (wheelRadius - 3),
+                    wheelY + Math.sin(angle) * (wheelRadius - 3)
+                );
+                ctx.stroke();
+            }
+
+            // Hub
+            ctx.fillStyle = '#666';
+            ctx.beginPath();
+            ctx.arc(wheelX, wheelY, 4, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // Draw barrel (pointing upward)
-        ctx.save();
-        ctx.rotate(this.angle);
+        // Draw wooden platform base
+        ctx.fillStyle = '#8B6F47';
+        ctx.beginPath();
+        ctx.moveTo(-this.baseWidth / 2, this.baseHeight);
+        ctx.lineTo(-this.baseWidth / 2 + 10, 0);
+        ctx.lineTo(this.baseWidth / 2 - 10, 0);
+        ctx.lineTo(this.baseWidth / 2, this.baseHeight);
+        ctx.closePath();
+        ctx.fill();
 
-        // Barrel body with metallic gradient
+        ctx.strokeStyle = '#5C4A2F';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Wood grain lines
+        ctx.strokeStyle = '#6B5544';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+            const y = this.baseHeight * (i / 3);
+            ctx.beginPath();
+            ctx.moveTo(-this.baseWidth / 2 + 10 + i * 3, y);
+            ctx.lineTo(this.baseWidth / 2 - 10 - i * 3, y);
+            ctx.stroke();
+        }
+
+        // Cannon mount base
+        const mountRadius = 14;
+        const mountGradient = ctx.createRadialGradient(0, -2, 2, 0, 0, mountRadius);
+        mountGradient.addColorStop(0, '#888');
+        mountGradient.addColorStop(1, '#333');
+        ctx.fillStyle = mountGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, mountRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#1A1A1A';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Mount details (bolts)
+        for (let i = 0; i < 4; i++) {
+            const angle = (i * Math.PI * 2) / 4 + Math.PI / 4;
+            const bx = Math.cos(angle) * (mountRadius - 4);
+            const by = Math.sin(angle) * (mountRadius - 4);
+            ctx.fillStyle = '#222';
+            ctx.beginPath();
+            ctx.arc(bx, by, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // VERTICAL BARREL - Tall and narrow to be clearly upright
         const barrelGradient = ctx.createLinearGradient(
             -this.barrelWidth / 2, 0,
             this.barrelWidth / 2, 0
         );
-        barrelGradient.addColorStop(0, '#3A3A3A');
-        barrelGradient.addColorStop(0.3, '#555');
-        barrelGradient.addColorStop(0.5, '#666');
-        barrelGradient.addColorStop(0.7, '#555');
-        barrelGradient.addColorStop(1, '#3A3A3A');
+        barrelGradient.addColorStop(0, '#1A1A1A');
+        barrelGradient.addColorStop(0.15, '#333');
+        barrelGradient.addColorStop(0.5, '#555');
+        barrelGradient.addColorStop(0.85, '#333');
+        barrelGradient.addColorStop(1, '#1A1A1A');
 
+        // Main barrel shaft (TALL vertical rectangle)
         ctx.fillStyle = barrelGradient;
-        ctx.beginPath();
-        ctx.roundRect(-this.barrelWidth / 2, -this.barrelLength, this.barrelWidth, this.barrelLength, 4);
-        ctx.fill();
-        ctx.strokeStyle = '#222';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.fillRect(
+            -this.barrelWidth / 2,
+            -this.barrelLength,
+            this.barrelWidth,
+            this.barrelLength
+        );
 
-        // Barrel rings for detail
-        ctx.strokeStyle = '#444';
-        ctx.lineWidth = 3;
-        for (let i = 1; i <= 3; i++) {
-            const ringY = -this.barrelLength + (i * this.barrelLength / 4);
+        // Barrel outline
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+            -this.barrelWidth / 2,
+            -this.barrelLength,
+            this.barrelWidth,
+            this.barrelLength
+        );
+
+        // Horizontal bands on barrel (emphasize it's vertical)
+        ctx.strokeStyle = '#777';
+        ctx.lineWidth = 2;
+        const bands = [0.3, 0.6];  // Reduced bands for shorter barrel
+        for (let pos of bands) {
+            const bandY = -this.barrelLength * pos;
+            // Draw band as a slight oval to show it wraps around
             ctx.beginPath();
-            ctx.moveTo(-this.barrelWidth / 2, ringY);
-            ctx.lineTo(this.barrelWidth / 2, ringY);
+            ctx.ellipse(0, bandY, this.barrelWidth / 2, 2, 0, 0, Math.PI * 2);
             ctx.stroke();
         }
 
-        // Barrel opening (dark circle at the end)
-        ctx.fillStyle = '#111';
+        // Barrel tip - flared muzzle
+        ctx.fillStyle = '#2A2A2A';
+        ctx.beginPath();
+        ctx.arc(0, -this.barrelLength, this.barrelWidth / 2 + 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Barrel opening (dark hole at top)
+        ctx.fillStyle = '#000';
         ctx.beginPath();
         ctx.arc(0, -this.barrelLength, this.barrelWidth / 2 - 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner barrel highlight
-        ctx.strokeStyle = '#444';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Muzzle rim
-        ctx.strokeStyle = '#666';
-        ctx.lineWidth = 3;
+        // Muzzle highlight
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(0, -this.barrelLength, this.barrelWidth / 2, 0, Math.PI * 2);
+        ctx.arc(0, -this.barrelLength, this.barrelWidth / 2 + 2, Math.PI, 0);
         ctx.stroke();
 
-        ctx.restore();
         ctx.restore();
     }
 }
